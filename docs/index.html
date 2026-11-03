@@ -52,7 +52,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .eyebrow{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;gap:12px;margin-bottom:28px}
 .eyebrow::before{content:"";width:36px;height:1px;background:var(--ink-3)}
 .name{font-size:clamp(56px,14vw,210px);line-height:.88;font-weight:700;letter-spacing:-.055em;user-select:none}
-.name .row{display:block;white-space:nowrap}
+.name .row{display:block;width:max-content;white-space:nowrap}
 .name .ch{display:inline-block;transition:transform .5s var(--ease),font-weight .5s,color .4s;will-change:transform}
 .name em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.02em}
 .name .ch.swap{font-family:var(--serif);font-style:italic;font-weight:400}
@@ -224,6 +224,8 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 }
 @media (max-width:600px){
   .nav ul a{padding:7px 10px;font-size:13px}
+  .eyebrow{font-size:11px;letter-spacing:.12em;gap:10px}
+  .eyebrow::before{width:24px}
   .timeline button{grid-template-columns:1fr 24px}
   .timeline .yr{grid-column:1/-1;margin-bottom:-12px}
   .timeline .body p{padding-left:0}
@@ -367,6 +369,18 @@ $$("#name .row").forEach(row => {
   walk(row);
 });
 const chars = $$("#name .ch");
+// on phones the name grows until its longest line fills the screen width
+const nameEl = $("#name");
+function fitName() {
+  nameEl.style.fontSize = "";
+  if (innerWidth > 700) return;
+  const widest = Math.max(...$$(".row", nameEl).map(r => r.offsetWidth));
+  const size = parseFloat(getComputedStyle(nameEl).fontSize);
+  nameEl.style.fontSize = size * nameEl.clientWidth / widest * .98 + "px";
+}
+fitName();
+document.fonts && document.fonts.ready.then(fitName);
+addEventListener("resize", fitName);
 chars.forEach(c => c.addEventListener("pointerenter", () => {
   if (c.classList.contains("swap")) return;
   c.classList.add("swap");
