@@ -1,2 +1,5 @@
 .DS_Store
 .claude/
+# original artwork stays on this Mac; the site uses the resized copies in docs/
+works/*
+!works/_template/
