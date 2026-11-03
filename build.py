@@ -4,7 +4,7 @@
     works/
         Design/                     <- category (folder name = filter name)
             Curry Campaign EDM/     <- one project; folder name = title
-                info.txt            <- optional: title, year, role ... + description
+                info.txt            <- optional: title, year, role, featured: yes ... + description
                 cover.jpg           <- optional; otherwise the first image
                 01.jpg ...
         Photography/                <- images straight inside a category
@@ -148,6 +148,7 @@ def build_project(title, category, files, meta=None, desc="", key=None):
         "tags": [t.strip() for t in meta.get("tags", "").split(",") if t.strip()],
         "link": meta.get("link", ""),
         "order": float(meta.get("order", 0) or 0),
+        "featured": meta.get("featured", "").lower() in {"yes", "true", "1"},
         "cover": "", "coverRatio": 0, **cover_info,
         "description": desc,
         "media": media,

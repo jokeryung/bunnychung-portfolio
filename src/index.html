@@ -90,8 +90,8 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .filters button.on{background:var(--ink);color:var(--bg)}
 
 /* grid */
-.grid{display:flex;gap:var(--gap);align-items:flex-start}
-.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--gap)}
+.grid{position:relative;column-gap:var(--gap);min-height:200px}
+.grid .card{position:absolute;top:0;left:0}
 .card{perspective:900px;cursor:none;outline:none}
 .card-in{transform-style:preserve-3d;transition:transform .5s var(--ease)}
 .thumb{position:relative;border-radius:14px;overflow:hidden;background:var(--chip);transition:box-shadow .4s var(--ease)}
@@ -438,21 +438,32 @@ const cards = WORKS.map((w, i) => {
 let filter = "All", colCount = 0;
 const shown = () => cards.filter(c => filter === "All" || WORKS[c.dataset.i].category === filter);
 function layout() {
-  colCount = innerWidth > 1300 ? 4 : innerWidth > 900 ? 3 : 2;
-  const cols = Array.from({ length: colCount }, () => Object.assign(document.createElement("div"), { className: "col" }));
+  if (!WORKS.length) { grid.innerHTML = `<div class="empty">Work coming soon.</div>`; return; }
+  const gridW = grid.clientWidth;
+  colCount = gridW > 1180 ? 4 : gridW > 780 ? 3 : 2;
+  const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
+  const colW = (gridW - gap * (colCount - 1)) / colCount;
   const heights = new Array(colCount).fill(0);
-  shown().forEach(c => {
-    const k = heights.indexOf(Math.min(...heights));   // shortest column first, like Pinterest
-    cols[k].append(c);
-    heights[k] += ratio(WORKS[c.dataset.i]) + .04;
+  const list = shown();
+  cards.forEach(c => { if (!list.includes(c)) c.remove(); });
+  list.forEach(c => {
+    const w = WORKS[c.dataset.i], span = w.featured ? Math.min(2, colCount) : 1;
+    // shortest spot first, like Pinterest; a featured card needs two columns side by side
+    let col = 0, top = Infinity;
+    for (let k = 0; k <= colCount - span; k++) {
+      const t = Math.max(...heights.slice(k, k + span));
+      if (t < top - 1) { top = t; col = k; }
+    }
+    const width = colW * span + gap * (span - 1);
+    Object.assign(c.style, { left: col * (colW + gap) + "px", top: top + "px", width: width + "px" });
+    if (!c.isConnected) grid.append(c);
+    for (let k = col; k < col + span; k++) heights[k] = top + width * ratio(w) + gap;
   });
-  grid.replaceChildren(...(WORKS.length ? cols : [Object.assign(document.createElement("div"), { className: "empty", textContent: "Work coming soon." })]));
+  grid.style.height = Math.max(0, ...heights) - gap + "px";
 }
 layout();
-addEventListener("resize", () => {
-  const n = innerWidth > 1300 ? 4 : innerWidth > 900 ? 3 : 2;
-  if (n !== colCount) layout();
-});
+let lastW = grid.clientWidth;
+new ResizeObserver(() => { if (grid.clientWidth !== lastW) { lastW = grid.clientWidth; layout(); } }).observe(grid);
 
 const cats = [...new Set(WORKS.map(w => w.category))];
 if (cats.length > 1) {
