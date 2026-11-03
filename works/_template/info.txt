@@ -1,0 +1,12 @@
+title: 作品名稱 Project title
+year: 2025
+category: Video
+role: Director, Editor
+client: HKU
+tags: AI, Video Editing, Motion
+order: 0
+video: https://youtu.be/xxxxxxxxxxx
+link:
+---
+喺呢度寫作品簡介，可以寫幾段。
+（以 "_" 開頭嘅 folder 唔會出現喺網站，呢個係範本，copy 一份再改名就用得。）
