@@ -371,7 +371,10 @@ $$("#name .row").forEach(row => {
 const chars = $$("#name .ch");
 // on phones the name grows until its longest line fills the screen width
 const nameEl = $("#name");
+let fitW = 0;
 function fitName() {
+  fitW = innerWidth;
+  chars.forEach(c => c.classList.remove("swap"));
   nameEl.style.fontSize = "";
   if (innerWidth > 700) return;
   const widest = Math.max(...$$(".row", nameEl).map(r => r.offsetWidth));
@@ -380,9 +383,26 @@ function fitName() {
 }
 fitName();
 document.fonts && document.fonts.ready.then(fitName);
-addEventListener("resize", fitName);
+addEventListener("resize", () => { if (innerWidth !== fitW) fitName(); });   // phone toolbars fire resize on scroll
+// phones have no hover: a wave of typeface swaps runs through the name as the page scrolls
+const isPhone = () => !fine && Math.min(innerWidth, innerHeight) <= 600;
+if (!calm) {
+  let waveQueued = false;
+  const wave = () => {
+    waveQueued = false;
+    if (!isPhone()) return;
+    const range = nameEl.offsetTop + nameEl.offsetHeight - 80;   // done as the name reaches the nav
+    const head = Math.min(scrollY / range, 1) * (chars.length + 2);
+    chars.forEach((c, i) => {
+      const on = i < head && head < i + 3;
+      c.classList.toggle("swap", on);
+      c.style.transform = on ? "translateY(-.06em)" : "";
+    });
+  };
+  addEventListener("scroll", () => { if (!waveQueued) { waveQueued = true; requestAnimationFrame(wave); } }, { passive: true });
+}
 chars.forEach(c => c.addEventListener("pointerenter", () => {
-  if (c.classList.contains("swap")) return;
+  if (isPhone() || c.classList.contains("swap")) return;
   c.classList.add("swap");
   setTimeout(() => c.classList.remove("swap"), 900);
 }));
