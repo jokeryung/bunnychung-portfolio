@@ -570,13 +570,17 @@ if (cats.length > 1) {
   };
   const setTab = (cat, toTop) => {
     filter = cat;
-    const run = () => {
-      layout(); renderTabs();
-      cards.forEach(c => c.classList.add("in"));
-      if (toTop) $("#work").scrollIntoView({ behavior: "instant" });
-    };
-    if (document.startViewTransition && !calm) document.startViewTransition(run).ready.catch(() => {});   // skipped when hidden or resized; run() still applies
-    else run();
+    layout(); renderTabs();
+    if (toTop) $("#work").scrollIntoView({ behavior: "instant" });
+    // same reveal as scrolling: cards start hidden and fade in as they enter the screen
+    shown().forEach((c, i) => {
+      c.style.transition = "none";
+      c.classList.remove("in");
+      void c.offsetWidth;
+      c.style.transition = "";
+      c.style.transitionDelay = (i % 3) * 80 + "ms";
+      rv.observe(c);
+    });
   };
   renderTabs();
   $("#filters").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTab(b.dataset.cat, false); });
