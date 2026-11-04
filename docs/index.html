@@ -141,9 +141,52 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .cursor{position:fixed;top:0;left:0;z-index:100;pointer-events:none;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;mix-blend-mode:difference;
   display:grid;place-items:center;color:var(--bg);font-size:13px;font-weight:600;transition:width .35s var(--ease),height .35s var(--ease),margin .35s var(--ease),opacity .3s;opacity:0}
 .cursor.show{opacity:1}
-.cursor.big{width:88px;height:88px;margin:-44px 0 0 -44px;background:var(--ink);mix-blend-mode:normal}
-.cursor span{opacity:0;text-align:center;line-height:1.2;transition:opacity .2s}
+.cursor.big{width:88px;height:88px;margin:-44px 0 0 -44px;background:transparent;mix-blend-mode:normal}
+.cursor span{position:relative;opacity:0;text-align:center;line-height:1.2;transition:opacity .2s,transform .15s var(--ease)}
 .cursor.big span{opacity:1}
+/* the big dot keeps pressing itself down to show that it can be held; JS moves .cursor, so the disc and label animate inside it */
+.cursor::before,.cursor::after{content:"";position:absolute;inset:0;border-radius:50%;opacity:0}
+.cursor::after{z-index:-1;background:var(--ink);transition:opacity .12s,transform .15s var(--ease)}
+.cursor::before{z-index:-2;border:1.5px solid var(--ink)}
+.cursor{isolation:isolate}
+.cursor.big::after{opacity:1}
+.cursor.big::after,.cursor.big span{animation:holdDemo 2.8s infinite}
+.cursor.big::before{animation:holdRing 2.8s infinite}
+.cursor.pressing::after,.cursor.pressing span{animation:holdStrain .04s linear infinite alternate}
+.cursor.pressing::before{animation:none}
+/* a finger pressing down from above: it stays round and spreads a little under the pressure, shakes with the strain, then eases back */
+@keyframes holdDemo{
+  0%,20%{transform:scale(1);animation-timing-function:ease-out}
+  28%{transform:scale(.97);animation-timing-function:cubic-bezier(.7,0,1,.6)}
+  34%{transform:scale(1.15);animation-timing-function:ease-out}
+  39%{transform:scale(1.1);animation-timing-function:ease-in-out}
+  44.0%{transform:translate(0.49px,-0.28px) scale(1.124)}
+  45.9%{transform:translate(-0.57px,0.32px) scale(1.116)}
+  47.8%{transform:translate(0.65px,-0.37px) scale(1.125)}
+  49.7%{transform:translate(-0.73px,0.41px) scale(1.115)}
+  51.6%{transform:translate(0.8px,-0.46px) scale(1.126)}
+  53.5%{transform:translate(-0.88px,0.5px) scale(1.114)}
+  55.4%{transform:translate(0.96px,-0.55px) scale(1.127)}
+  57.3%{transform:translate(-1.04px,0.59px) scale(1.113)}
+  59.2%{transform:translate(1.12px,-0.64px) scale(1.128)}
+  61.1%{transform:translate(-1.2px,0.68px) scale(1.111)}
+  63.0%{transform:translate(1.28px,-0.73px) scale(1.129)}
+  64.9%{transform:translate(-1.35px,0.77px) scale(1.11)}
+  67%{transform:scale(1.12);animation-timing-function:cubic-bezier(.2,.9,.3,1)}
+  75%{transform:scale(.94);animation-timing-function:ease-in-out}
+  83%{transform:scale(1.03);animation-timing-function:ease-in-out}
+  91%{transform:scale(.99);animation-timing-function:ease-in-out}
+  100%{transform:scale(1)}
+}
+@keyframes holdStrain{
+  from{transform:translate(1.4px,-.8px) scale(1.132)}
+  to{transform:translate(-1.4px,.8px) scale(1.108)}
+}
+@keyframes holdRing{
+  0%,33%{transform:scale(1.1);opacity:0}
+  35%{transform:scale(1.15);opacity:.6;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  60%,100%{transform:scale(1.6);opacity:0}
+}
 @media (hover:none){.cursor{display:none}.card{cursor:pointer}}
 
 /* about */
@@ -657,7 +700,12 @@ const cursor = $(".cursor");
 let cx = 0, cy = 0;
 if (fine) {
   addEventListener("pointermove", e => { cursor.classList.add("show"); }, { once: true });
-  const follow = () => { cx += (mx - cx) * .2; cy += (my - cy) * .2; cursor.style.transform = `translate(${cx}px,${cy}px)`; requestAnimationFrame(follow); };
+  const follow = () => {
+    const k = cursor.classList.contains("pressing") ? 1 : .2;     // no trailing behind the hand while holding
+    cx += (mx - cx) * k; cy += (my - cy) * k;
+    cursor.style.transform = `translate(${cx}px,${cy}px)`;
+    requestAnimationFrame(follow);
+  };
   follow();
   document.addEventListener("pointerleave", () => cursor.classList.remove("show"));
   document.addEventListener("pointerenter", () => cursor.classList.add("show"));
@@ -872,6 +920,7 @@ function plainColour(c, to) {
 }
 function pressCard(e) {
   pressUsed = false;
+  cursor.classList.add("pressing");
   const { clientX: x, clientY: y } = e;
   clearTimeout(pressTimer);
   pressTimer = setTimeout(() => {
@@ -882,6 +931,7 @@ function pressCard(e) {
 }
 function releasePress() {
   clearTimeout(pressTimer);
+  cursor.classList.remove("pressing");
   if (!holding) return;
   holding = false;
   showHoldHint();
