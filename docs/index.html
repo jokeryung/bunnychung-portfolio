@@ -98,7 +98,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .grid{position:relative;column-gap:var(--gap);min-height:200px}
 .grid .card{position:absolute;top:0;left:0}
 .card{perspective:900px;cursor:none;outline:none}
-.card{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (hover:hover){.card{-webkit-user-select:none;user-select:none}}
 .card-in{position:relative;transform-style:preserve-3d;transition:transform .5s var(--ease)}
 .thumb{position:relative;border-radius:14px;overflow:hidden;background:var(--chip);transition:box-shadow .4s var(--ease)}
 .card:hover .thumb,.card:focus-visible .thumb{box-shadow:0 18px 40px rgba(0,0,0,.14)}
@@ -779,9 +779,10 @@ cards.forEach(card => {
     const r = thumb.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
     inner.style.transform = `rotateY(${(px - .5) * 6}deg) rotateX(${(.5 - py) * 6}deg)`;
   });
-  card.addEventListener("pointerdown", e => { if (e.button === 0) pressCard(e); });
-  card.addEventListener("dragstart", e => e.preventDefault());
-  card.addEventListener("contextmenu", e => { if (!fine) e.preventDefault(); });
+  if (fine) {
+    card.addEventListener("pointerdown", e => { if (e.button === 0) pressCard(e); });
+    card.addEventListener("dragstart", e => e.preventDefault());
+  }
   card.addEventListener("click", () => {
     if (pressUsed) { pressUsed = false; return; }
     openCard(+card.dataset.i);
@@ -793,7 +794,7 @@ if (!fine) {
   const colourOnScroll = new IntersectionObserver(es => es.forEach(e => {
     if (!e.isIntersecting) return;
     colourOnScroll.unobserve(e.target);
-    const c = colours[cards.indexOf(e.target)], go = () => { if (sweep) setTimeout(go, 300); else reveal(c, 1); };
+    const c = colours[cards.indexOf(e.target)], go = () => reveal(c, 1);
     if (c.img.complete) go(); else c.img.addEventListener("load", go, { once: true });
   }), { rootMargin: "0px 0px -20% 0px" });
   cards.forEach(c => colourOnScroll.observe(c));
@@ -933,16 +934,6 @@ function sweepTick(now) {
   // a card the cursor left during the hold goes back to grey
   if (undone && fine) colours.forEach(c => { if (c.p > 0 && !c.card.matches(":hover")) reveal(c, 0); });
 }
-if (!fine) {     // phones have no cursor label, so say it once
-  const holdHint = () => {
-    const g = grid.getBoundingClientRect();
-    if (g.top > innerHeight / 2) return;
-    removeEventListener("scroll", holdHint);
-    toast("Press and hold any work to reveal its colour", 3500);
-  };
-  addEventListener("scroll", holdHint, { passive: true });
-}
-
 /* ---------- project sheet ---------- */
 const modal = $("#modal"), mBody = $("#mBody");
 let cur = -1, lastFocus = null;
@@ -1057,7 +1048,7 @@ $("#tabs").addEventListener("click", e => {
 });
 
 /* ---------- contact ---------- */
-const toast = (msg, ms = 1800) => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms); };
+const toast = msg => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 1800); };
 $("#copyMail").onclick = () => navigator.clipboard.writeText("practisemakebunny@gmail.com").then(() => toast("Email copied ✓"), () => toast("practisemakebunny@gmail.com"));
 const mail = $("#mail");
 if (fine && !calm) {
