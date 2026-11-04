@@ -94,9 +94,11 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .filters button.on{background:var(--ink);color:var(--bg)}
 
 /* grid */
+#work{overflow-x:clip}
 .grid{position:relative;column-gap:var(--gap);min-height:200px}
 .grid .card{position:absolute;top:0;left:0}
 .card{perspective:900px;cursor:none;outline:none}
+.card{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .card-in{position:relative;transform-style:preserve-3d;transition:transform .5s var(--ease)}
 .thumb{position:relative;border-radius:14px;overflow:hidden;background:var(--chip);transition:box-shadow .4s var(--ease)}
 .card:hover .thumb,.card:focus-visible .thumb{box-shadow:0 18px 40px rgba(0,0,0,.14)}
@@ -134,7 +136,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
   display:grid;place-items:center;color:var(--bg);font-size:13px;font-weight:600;transition:width .35s var(--ease),height .35s var(--ease),margin .35s var(--ease),opacity .3s;opacity:0}
 .cursor.show{opacity:1}
 .cursor.big{width:88px;height:88px;margin:-44px 0 0 -44px;background:var(--ink);mix-blend-mode:normal}
-.cursor span{opacity:0;transition:opacity .2s}
+.cursor span{opacity:0;text-align:center;line-height:1.2;transition:opacity .2s}
 .cursor.big span{opacity:1}
 @media (hover:none){.cursor{display:none}.card{cursor:pointer}}
 
@@ -179,7 +181,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .contact-row button,.contact-row a{padding:10px 18px;border-radius:99px;border:1px solid #3a3a3a;color:#cfcfcf;font-size:14px;transition:background .25s,color .25s}
 .contact-row button:hover,.contact-row a:hover{background:var(--bg);color:var(--ink)}
 .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:clamp(60px,9vw,120px);padding-top:24px;border-top:1px solid #2c2c2c;color:#8a8a8a;font-size:13px}
-.toast{position:fixed;left:50%;bottom:28px;z-index:300;transform:translate(-50%,30px);opacity:0;padding:12px 20px;border-radius:99px;background:var(--ink);color:var(--bg);font-size:14px;transition:all .4s var(--ease);pointer-events:none}
+.toast{width:max-content;max-width:calc(100vw - 32px);text-align:center;position:fixed;left:50%;bottom:28px;z-index:300;transform:translate(-50%,30px);opacity:0;padding:12px 20px;border-radius:99px;background:var(--ink);color:var(--bg);font-size:14px;transition:all .4s var(--ease);pointer-events:none}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
 /* back to top */
@@ -188,6 +190,8 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 @media (hover:hover){.totop:hover{background:var(--ink);color:var(--bg)}.totop:hover svg{animation:arrowUp .9s var(--ease) infinite}}
 .totop:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 @keyframes arrowUp{0%{transform:none;opacity:1}45%{transform:translateY(-34px);opacity:0}46%{transform:translateY(34px);opacity:0}100%{transform:none;opacity:1}}
+
+.sweep-canvas{position:fixed;left:0;top:0;pointer-events:none}
 
 /* project modal */
 .modal{position:fixed;inset:0;z-index:200;display:flex;justify-content:flex-end;visibility:hidden}
@@ -258,7 +262,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 </head>
 <body>
 <div class="bg-grid" aria-hidden="true"></div>
-<div class="cursor" aria-hidden="true"><span>View</span></div>
+<div class="cursor" aria-hidden="true"><span>Hold to<br>reveal</span></div>
 
 <header class="nav" id="nav">
   <a href="#top" class="logo" id="logo" aria-label="Bunny Chung"><span>Bunny</span><em>Chung</em></a>
@@ -570,7 +574,7 @@ if (cats.length > 1) {
   };
   const setTab = (cat, toTop) => {
     filter = cat;
-    if (fine) colours.forEach(c => reveal(c, 0));
+    if (fine && !allColour) colours.forEach(c => reveal(c, 0));
     layout(); renderTabs();
     if (toTop) $("#work").scrollIntoView({ behavior: "instant" });
     // same reveal as scrolling: cards start hidden and fade in as they enter the screen
@@ -664,22 +668,28 @@ function makeSilk() {
   return { canvas, gl, u, busy: false };
 }
 const colours = [], silks = [], moving = new Set(), silkQueue = [];
+let allColour = false, sweep = null, pressUsed = false;
 let silkRaf = 0, silkLast = 0, dragX = 0, dragY = 0, lastMx = 0, lastMy = 0;
 const freeSilk = () => {
   let s = silks.find(x => !x.busy);
   if (!s && silks.length < 3 && (s = makeSilk())) silks.push(s);
   return s || null;
 };
-function loadSilk(s, c) {        // upload only the part of the image the card shows
-  const { img, thumb } = c, dpr = Math.min(devicePixelRatio || 1, 1.5);
-  const cw = thumb.clientWidth, ch = thumb.clientHeight, w = Math.round(cw * dpr), h = Math.round(ch * dpr);
-  if (!img.complete || !img.naturalWidth || !w || !h) return false;
-  const tall = thumb.classList.contains("tall");
+function cardShot(c, dpr) {       // only the part of the image the card shows
+  const { img, thumb } = c, w = Math.round(thumb.clientWidth * dpr), h = Math.round(thumb.clientHeight * dpr);
+  if (!img.complete || !img.naturalWidth || !w || !h) return null;
   const shot = document.createElement("canvas");
   shot.width = w; shot.height = h;
   const fit = Math.min(img.naturalWidth / w, img.naturalHeight / h), sw = w * fit, sh = h * fit;
-  const sy = tall ? 0 : (img.naturalHeight - sh) / 2;
+  const sy = thumb.classList.contains("tall") ? 0 : (img.naturalHeight - sh) / 2;
   shot.getContext("2d").drawImage(img, (img.naturalWidth - sw) / 2, sy, sw, sh, 0, 0, w, h);
+  return shot;
+}
+function loadSilk(s, c) {
+  const { thumb } = c, dpr = Math.min(devicePixelRatio || 1, 1.5);
+  const cw = thumb.clientWidth, ch = thumb.clientHeight, tall = thumb.classList.contains("tall");
+  const shot = cardShot(c, dpr);
+  if (!shot) return false;
   const { gl, u, canvas } = s;
   try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, shot); } catch { return false; }
   canvas.width = Math.round((cw + SILK_PAD * 2) * dpr);
@@ -731,6 +741,7 @@ function silkTick(now) {
   silkRaf = moving.size ? requestAnimationFrame(silkTick) : 0;
 }
 function reveal(c, to) {
+  if (sweep) return;
   c.target = to;
   if (c.silk || c.p === to) return;
   const s = calm ? null : freeSilk();
@@ -760,15 +771,21 @@ cards.forEach(card => {
   const colour = { card, holder: inner, thumb, img: $(".color", thumb), p: 0, target: 0, silk: null };
   colours.push(colour);
   const crossed = e => { colour.tx = e.clientX + scrollX; colour.ty = e.clientY + scrollY; };
-  card.addEventListener("pointerenter", e => { crossed(e); cursor.classList.add("big"); if (fine) reveal(colour, 1); });
-  card.addEventListener("pointerleave", e => { crossed(e); cursor.classList.remove("big"); inner.style.transform = ""; if (fine) reveal(colour, 0); });
-  card.addEventListener("focus", () => { if (fine && card.matches(":focus-visible")) reveal(colour, 1); });
-  card.addEventListener("blur", () => { if (fine && !card.matches(":hover")) reveal(colour, 0); });
+  card.addEventListener("pointerenter", e => { crossed(e); cursor.classList.add("big"); if (fine && !allColour) reveal(colour, 1); });
+  card.addEventListener("pointerleave", e => { crossed(e); cursor.classList.remove("big"); inner.style.transform = ""; if (fine && !allColour) reveal(colour, 0); });
+  card.addEventListener("focus", () => { if (fine && !allColour && card.matches(":focus-visible")) reveal(colour, 1); });
+  card.addEventListener("blur", () => { if (fine && !allColour && !card.matches(":hover")) reveal(colour, 0); });
   if (fine && !calm) card.addEventListener("pointermove", e => {
     const r = thumb.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
     inner.style.transform = `rotateY(${(px - .5) * 6}deg) rotateX(${(.5 - py) * 6}deg)`;
   });
-  card.addEventListener("click", () => openCard(+card.dataset.i));
+  card.addEventListener("pointerdown", e => { if (e.button === 0) pressCard(e); });
+  card.addEventListener("dragstart", e => e.preventDefault());
+  card.addEventListener("contextmenu", e => { if (!fine) e.preventDefault(); });
+  card.addEventListener("click", () => {
+    if (pressUsed) { pressUsed = false; return; }
+    openCard(+card.dataset.i);
+  });
   card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(+card.dataset.i); } });
 });
 
@@ -776,10 +793,154 @@ if (!fine) {
   const colourOnScroll = new IntersectionObserver(es => es.forEach(e => {
     if (!e.isIntersecting) return;
     colourOnScroll.unobserve(e.target);
-    const c = colours[cards.indexOf(e.target)], go = () => reveal(c, 1);
+    const c = colours[cards.indexOf(e.target)], go = () => { if (sweep) setTimeout(go, 300); else reveal(c, 1); };
     if (c.img.complete) go(); else c.img.addEventListener("load", go, { once: true });
   }), { rootMargin: "0px 0px -20% 0px" });
   cards.forEach(c => colourOnScroll.observe(c));
+}
+
+/* ---------- press and hold a work: colour spreads out from it, same silk as hover ---------- */
+const HOLD_MS = 220, cursorLabel = $(".cursor span");
+const showHoldHint = () => { cursorLabel.innerHTML = allColour ? "Hold to<br>fade" : "Hold to<br>reveal"; };
+let sweepCtx = null, pressTimer = 0, holding = false;
+function plainColour(c, to) {
+  c.target = c.p = to;
+  c.img.style.transition = "opacity .7s ease";
+  c.img.style.opacity = to;
+}
+function pressCard(e) {
+  pressUsed = false;
+  const { clientX: x, clientY: y } = e;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    pressUsed = holding = true;
+    cursorLabel.innerHTML = "Keep<br>holding";
+    startSweep(allColour ? 0 : 1, x, y);
+  }, HOLD_MS);
+}
+function releasePress() {
+  clearTimeout(pressTimer);
+  if (!holding) return;
+  holding = false;
+  showHoldHint();
+  if (sweep && !sweep.committed) {     // let go early: the colour recedes
+    sweep.cancelled = true;
+    sweep.items = sweep.items.filter(it => it.tex);
+    sweep.items.forEach(it => { it.c.target = sweep.from; });
+  }
+}
+addEventListener("pointerup", releasePress);
+addEventListener("pointercancel", releasePress);
+function startSweep(to, x, y) {
+  if (sweep) return;
+  if (!sweepCtx && !calm && (sweepCtx = makeSilk())) {   // one canvas over the screen, one draw per card
+    const { gl, u, canvas } = sweepCtx;
+    canvas.className = "sweep-canvas";
+    gl.uniform1f(u.flow, 0);
+    gl.uniform1f(u.frame, 1);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+  }
+  if (!sweepCtx) {
+    allColour = to === 1;
+    colours.forEach(c => { if (!c.silk) plainColour(c, to); });
+    return;
+  }
+  const now = performance.now(), items = [];
+  colours.forEach(c => {
+    if (c.silk || c.p === to || !c.card.isConnected || !c.card.classList.contains("in")) return;
+    const r = c.card.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight) return;
+    // the wave reaches each card in turn, nearest first
+    items.push({ c, start: now + Math.min(Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom)) / 1.1, 1200), tex: null });
+  });
+  grid.prepend(sweepCtx.canvas);
+  sweep = { items, to, from: to ? 0 : 1, x: x + scrollX, y: y + scrollY, last: now, commitAt: Math.max(now, ...items.map(it => it.start)), committed: false, cancelled: false };
+  requestAnimationFrame(sweepTick);
+}
+function drawSweepCard(it, r, dpr, now) {
+  const { gl, u, canvas } = sweepCtx, { c } = it, pad = SILK_PAD;
+  const left = r.left + scrollX, top = r.top + scrollY, { x, y } = sweep;
+  gl.viewport((r.left - pad) * dpr, canvas.height - (r.bottom + pad) * dpr, (r.width + pad * 2) * dpr, (r.height + pad * 2) * dpr);
+  gl.bindTexture(gl.TEXTURE_2D, it.tex);
+  gl.uniform1f(u.p, 1 - (1 - c.p) ** 3);
+  gl.uniform1f(u.time, now / 1000 % 1000);
+  gl.uniform1f(u.tall, c.thumb.classList.contains("tall") ? 1 : 0);
+  gl.uniform1f(u.amp, 9);
+  gl.uniform1f(u.scale, 260);
+  gl.uniform2f(u.size, r.width + pad * 2, r.height + pad * 2);
+  gl.uniform2f(u.rect, r.width, r.height);
+  gl.uniform2f(u.origin, left - pad, top - pad);
+  gl.uniform2f(u.noiseOrigin, 0, 0);
+  gl.uniform2f(u.cursor, x, y);
+  gl.uniform2f(u.entry, x, y);
+  gl.uniform2f(u.drag, 0, 0);
+  gl.uniform1f(u.reach, Math.hypot(Math.max(x - left, left + r.width - x), Math.max(y - top, top + r.height - y)));
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+function sweepTick(now) {
+  const { gl, canvas } = sweepCtx, dpr = Math.min(devicePixelRatio || 1, 1.5);
+  const W = Math.round(innerWidth * dpr), H = Math.round(innerHeight * dpr);
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width = W; canvas.height = H;
+    canvas.style.width = innerWidth + "px";
+    canvas.style.height = innerHeight + "px";
+  }
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  const dt = Math.min(now - sweep.last, 50) || 16;
+  sweep.last = now;
+  if (!sweep.committed && !sweep.cancelled && now >= sweep.commitAt) {   // held long enough: everything follows
+    sweep.committed = true;
+    allColour = sweep.to === 1;
+    const moving = new Set(sweep.items.map(it => it.c));
+    colours.forEach(c => {
+      if (c.silk) c.target = sweep.to;
+      else if (!moving.has(c) && c.p !== sweep.to) plainColour(c, sweep.to);
+    });
+    showHoldHint();
+  }
+  sweep.items = sweep.items.filter(it => {
+    const { c } = it;
+    if (now < it.start) return true;
+    const r = c.card.getBoundingClientRect(), onScreen = r.bottom > -SILK_PAD && r.top < innerHeight + SILK_PAD;
+    if (!it.tex) {
+      const shot = onScreen && c.card.isConnected ? cardShot(c, dpr) : null;
+      if (!shot) { plainColour(c, sweep.to); return false; }
+      it.tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, it.tex);
+      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, shot);
+      c.target = sweep.to;
+      c.thumb.classList.add("silking");
+      c.img.style.transition = "";
+      c.img.style.opacity = 0;
+    }
+    const step = dt / (c.target ? 1300 : 1000);
+    c.p = c.target > c.p ? Math.min(c.p + step, 1) : Math.max(c.p - step, 0);
+    if (c.p === c.target) {
+      c.img.style.opacity = c.p;
+      c.thumb.classList.remove("silking");
+      gl.deleteTexture(it.tex);
+      return false;
+    }
+    if (onScreen) drawSweepCard(it, r, dpr, now);
+    return true;
+  });
+  if (sweep.items.length || (!sweep.committed && !sweep.cancelled)) return requestAnimationFrame(sweepTick);
+  canvas.remove();
+  const undone = sweep.cancelled && sweep.from === 0;
+  sweep = null;
+  // a card the cursor left during the hold goes back to grey
+  if (undone && fine) colours.forEach(c => { if (c.p > 0 && !c.card.matches(":hover")) reveal(c, 0); });
+}
+if (!fine) {     // phones have no cursor label, so say it once
+  const holdHint = () => {
+    const g = grid.getBoundingClientRect();
+    if (g.top > innerHeight / 2) return;
+    removeEventListener("scroll", holdHint);
+    toast("Press and hold any work to reveal its colour", 3500);
+  };
+  addEventListener("scroll", holdHint, { passive: true });
 }
 
 /* ---------- project sheet ---------- */
@@ -896,7 +1057,7 @@ $("#tabs").addEventListener("click", e => {
 });
 
 /* ---------- contact ---------- */
-const toast = msg => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 1800); };
+const toast = (msg, ms = 1800) => { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms); };
 $("#copyMail").onclick = () => navigator.clipboard.writeText("practisemakebunny@gmail.com").then(() => toast("Email copied ✓"), () => toast("practisemakebunny@gmail.com"));
 const mail = $("#mail");
 if (fine && !calm) {
