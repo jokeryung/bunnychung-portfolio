@@ -101,12 +101,12 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .thumb{position:relative;border-radius:14px;overflow:hidden;background:var(--chip);transition:box-shadow .4s var(--ease)}
 .card:hover .thumb,.card:focus-visible .thumb{box-shadow:0 18px 40px rgba(0,0,0,.14)}
 .card:focus-visible .thumb{outline:2px solid var(--ink);outline-offset:3px}
-.thumb img{width:100%;height:100%;object-fit:cover;transition:transform .9s var(--ease)}
-.card:hover .thumb img{transform:scale(1.05)}
-.thumb::before{content:"";position:absolute;inset:0;z-index:1;background:#141414;opacity:0;transition:opacity .4s;pointer-events:none}
-.card:hover .thumb::before{opacity:.12}
-.thumb .shine{position:absolute;inset:0;z-index:1;pointer-events:none;background:radial-gradient(500px circle at var(--sx,50%) var(--sy,50%),rgba(255,255,255,.35),transparent 40%);opacity:0;transition:opacity .4s}
-.card:hover .shine{opacity:1}
+.thumb img{width:100%;height:100%;object-fit:cover}
+/* grey-white copy underneath; the colour copy on top is revealed by the silk canvas */
+.thumb .base{filter:grayscale(1) contrast(.9);opacity:.7}
+.thumb .color{position:absolute;inset:0;opacity:0}
+.thumb canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+@media (hover:none){.thumb .base{filter:none;opacity:1}.thumb .color{display:none}}
 .thumb.tall img{object-position:top center}
 .thumb.tall::after{content:"";position:absolute;inset:auto 0 0;height:30%;background:linear-gradient(transparent,rgba(244,244,242,.9));pointer-events:none}
 .thumb .hint{position:absolute;z-index:2;left:12px;bottom:12px;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);color:var(--ink);font-size:12px;font-weight:500;white-space:nowrap;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s var(--ease)}
@@ -518,8 +518,7 @@ const cards = WORKS.map((w, i) => {
   el.setAttribute("aria-label", w.title ? `Open ${w.title}` : `View ${w.category} photo`);
   el.innerHTML = `<div class="card-in">
       <div class="thumb${w.coverRatio > 1.5 ? " tall" : ""}" style="aspect-ratio:1/${ratio(w)}">
-        ${w.cover ? `<img src="${esc(w.cover)}" alt="${esc(w.title || w.category)}" loading="lazy">` : ""}
-        <div class="shine"></div>
+        ${w.cover ? `<img class="base" src="${esc(w.cover)}" alt="${esc(w.title || w.category)}" loading="lazy"><img class="color" src="${esc(w.cover)}" alt="" loading="lazy">` : ""}
         ${w.video ? `<span class="play"></span>` : ""}
         ${w.coverRatio > 1.6 ? `<span class="hint">Full length ↓</span>`
           : w.media.length > 1 ? `<span class="hint always">${w.media.length} images</span>` : ""}
@@ -568,6 +567,7 @@ if (cats.length > 1) {
   };
   const setTab = (cat, toTop) => {
     filter = cat;
+    colours.forEach(c => reveal(c, 0));
     layout(); renderTabs();
     if (toTop) $("#work").scrollIntoView({ behavior: "instant" });
     // same reveal as scrolling: cards start hidden and fade in as they enter the screen
@@ -594,15 +594,125 @@ if (fine) {
   document.addEventListener("pointerleave", () => cursor.classList.remove("show"));
   document.addEventListener("pointerenter", () => cursor.classList.add("show"));
 }
+/* ---------- silk colour reveal: a wide soft edge that folds like cloth, no fixed shape ---------- */
+const SILK_VS = `attribute vec2 a; varying vec2 uv; void main(){ uv = a * .5 + .5; gl_Position = vec4(a, 0., 1.); }`;
+const SILK_FS = `precision highp float;
+  uniform sampler2D tex; uniform float p, time, aspect; varying vec2 uv;
+  float hash(vec2 v){ return fract(sin(dot(v, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 v){
+    vec2 i = floor(v), f = fract(v); f = f * f * (3. - 2. * f);
+    return mix(mix(hash(i), hash(i + vec2(1., 0.)), f.x), mix(hash(i + vec2(0., 1.)), hash(i + vec2(1., 1.)), f.x), f.y);
+  }
+  float folds(vec2 v){ return noise(v) * .6 + noise(v * 2.1 + 4.) * .28 + noise(v * 4.3 + 9.) * .12; }
+  void main(){
+    vec2 q = vec2(uv.x * aspect, uv.y) * 1.5;
+    vec2 warp = vec2(folds(q + vec2(time * .10, 0.)), folds(q * 1.2 - vec2(0., time * .08)));
+    float n = folds(q + warp * 1.4 + vec2(time * .05, -time * .04));
+    float soft = .42, moving = sin(p * 3.14159);
+    float a = smoothstep(n - soft, n + soft, mix(.1 - soft, 1. + soft, p));
+    vec2 drift = vec2(cos(n * 6.2832), sin(n * 6.2832)) * .022 * moving;
+    vec3 c = texture2D(tex, uv + drift).rgb;
+    // grey matches .thumb .base exactly, so the whole picture moves as one cloth with no ghosting
+    vec3 grey = mix(vec3(.922, .922, .910), vec3(dot(c, vec3(.2126, .7152, .0722)) * .9 + .05), .7);
+    gl_FragColor = vec4(mix(grey, c, a) + (n - .5) * .10 * moving, 1.);
+  }`;
+function makeSilk() {
+  const canvas = document.createElement("canvas");
+  const gl = canvas.getContext("webgl", { alpha: true, antialias: false });
+  if (!gl) return null;
+  const compile = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, SILK_VS));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, SILK_FS));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.bindAttribLocation(prog, 0, "a");
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  gl.vertexAttribPointer(gl.getAttribLocation(prog, "a"), 2, gl.FLOAT, false, 0, 0);
+  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  return { canvas, gl, busy: false, uP: gl.getUniformLocation(prog, "p"), uTime: gl.getUniformLocation(prog, "time"), uAspect: gl.getUniformLocation(prog, "aspect") };
+}
+const colours = [], silks = [], moving = new Set();
+let silkRaf = 0, silkLast = 0;
+const freeSilk = () => {
+  let s = silks.find(x => !x.busy);
+  if (!s && silks.length < 3 && (s = makeSilk())) silks.push(s);
+  return s || null;
+};
+function loadSilk(s, c) {        // upload only the part of the image the card shows
+  const { img, thumb } = c, dpr = Math.min(devicePixelRatio || 1, 1.5);
+  const w = Math.round(thumb.clientWidth * dpr), h = Math.round(thumb.clientHeight * dpr);
+  if (!img.complete || !img.naturalWidth || !w || !h) return false;
+  const shot = document.createElement("canvas");
+  shot.width = w; shot.height = h;
+  const fit = Math.min(img.naturalWidth / w, img.naturalHeight / h), sw = w * fit, sh = h * fit;
+  const sy = thumb.classList.contains("tall") ? 0 : (img.naturalHeight - sh) / 2;
+  shot.getContext("2d").drawImage(img, (img.naturalWidth - sw) / 2, sy, sw, sh, 0, 0, w, h);
+  try { s.gl.texImage2D(s.gl.TEXTURE_2D, 0, s.gl.RGBA, s.gl.RGBA, s.gl.UNSIGNED_BYTE, shot); } catch { return false; }
+  s.canvas.width = w; s.canvas.height = h;
+  s.gl.viewport(0, 0, w, h);
+  s.gl.uniform1f(s.uAspect, w / h);
+  return true;
+}
+function drawSilk(c, now) {
+  const { gl, uP, uTime } = c.silk, e = 1 - (1 - c.p) ** 3;
+  gl.uniform1f(uP, e);
+  gl.uniform1f(uTime, now / 1000 % 1000);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+function silkTick(now) {
+  const dt = Math.min(now - silkLast, 50);
+  silkLast = now;
+  moving.forEach(c => {
+    const step = dt / (c.target ? 1300 : 1000);
+    c.p = c.target > c.p ? Math.min(c.p + step, 1) : Math.max(c.p - step, 0);
+    if (c.p === c.target) {      // settled: the plain image takes over, pin-sharp
+      c.img.style.opacity = c.p;
+      c.silk.canvas.remove();
+      c.silk.busy = false;
+      c.silk = null;
+      moving.delete(c);
+    } else drawSilk(c, now);
+  });
+  silkRaf = moving.size ? requestAnimationFrame(silkTick) : 0;
+}
+function reveal(c, to) {
+  c.target = to;
+  if (c.silk || c.p === to) return;
+  const s = calm ? null : freeSilk();
+  c.img.style.transition = "";
+  if (!s || !loadSilk(s, c)) {   // no WebGL or image still loading: plain fade
+    c.img.style.transition = "opacity .7s ease";
+    c.img.style.opacity = c.p = to;
+    return;
+  }
+  s.busy = true;
+  c.silk = s;
+  drawSilk(c, performance.now());
+  c.thumb.append(s.canvas);
+  c.img.style.opacity = 0;
+  moving.add(c);
+  if (!silkRaf) { silkLast = performance.now(); silkRaf = requestAnimationFrame(silkTick); }
+}
 const openCard = i => WORKS[i].photo ? openPhoto(i) : openWork(i);
 cards.forEach(card => {
   const inner = $(".card-in", card), thumb = $(".thumb", card);
-  card.addEventListener("pointerenter", () => cursor.classList.add("big"));
-  card.addEventListener("pointerleave", () => { cursor.classList.remove("big"); inner.style.transform = ""; });
+  const colour = { thumb, img: $(".color", thumb), p: 0, target: 0, silk: null };
+  colours.push(colour);
+  card.addEventListener("pointerenter", () => { cursor.classList.add("big"); if (fine) reveal(colour, 1); });
+  card.addEventListener("pointerleave", () => { cursor.classList.remove("big"); inner.style.transform = ""; if (fine) reveal(colour, 0); });
+  card.addEventListener("focus", () => { if (fine && card.matches(":focus-visible")) reveal(colour, 1); });
+  card.addEventListener("blur", () => { if (fine && !card.matches(":hover")) reveal(colour, 0); });
   if (fine && !calm) card.addEventListener("pointermove", e => {
     const r = thumb.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
     inner.style.transform = `rotateY(${(px - .5) * 6}deg) rotateX(${(.5 - py) * 6}deg)`;
-    thumb.style.setProperty("--sx", px * 100 + "%"); thumb.style.setProperty("--sy", py * 100 + "%");
   });
   card.addEventListener("click", () => openCard(+card.dataset.i));
   card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(+card.dataset.i); } });
