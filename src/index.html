@@ -67,15 +67,21 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .roles span{position:absolute;left:0;top:0;white-space:nowrap;opacity:0;transform:translateY(100%);transition:opacity .5s,transform .6s var(--ease)}
 .roles span.on{opacity:1;transform:none}
 .roles span.out{opacity:0;transform:translateY(-100%)}
-.scroll-cue{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink-2)}
-.scroll-cue b{width:26px;height:42px;border:1.5px solid var(--ink-3);border-radius:99px;position:relative}
-.scroll-cue b::after{content:"";position:absolute;left:50%;top:8px;width:4px;height:8px;margin-left:-2px;border-radius:2px;background:var(--ink);animation:wheel 1.8s infinite}
-@keyframes wheel{to{transform:translateY(14px);opacity:0}}
-.cues{display:flex;align-items:center;gap:clamp(20px,3vw,36px);flex-wrap:wrap}
-/* same mouse as Scroll to explore; only the left-button corner fills in */
-.hold-cue b{overflow:hidden}
-.hold-cue b::after{left:0;top:0;width:50%;height:40%;margin:0;border-radius:0;animation:holdPress 2.6s ease-in-out infinite}
-@keyframes holdPress{0%,12%{opacity:0}24%,76%{opacity:1}90%,100%{opacity:0}}
+.hold-cue{display:flex;align-items:center;gap:20px;font-size:13px;color:var(--ink-2)}
+.hold-cue .mouse{position:relative;display:block;width:26px;height:42px}
+.hold-cue b{position:absolute;inset:0;overflow:hidden;border:1.5px solid var(--ink-3);border-radius:99px}
+/* the left button stays pressed while the same rings as the big cursor dot spread out */
+.hold-cue b::after{content:"";position:absolute;left:0;top:0;width:50%;height:40%;background:var(--ink);animation:holdPress 3s ease-in-out infinite}
+.hold-cue i{position:absolute;inset:0;border:1.5px solid var(--ink);border-radius:99px;opacity:0;animation:mouseBurst 3s linear infinite}
+.hold-cue i+i{animation-delay:.35s}
+/* same timing as holdBurst and the same 13px spread as the big dot's rings (88px x 1.3); inset keeps the pill shape */
+@keyframes mouseBurst{
+  0%{inset:0;opacity:.7;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  16.3%{inset:-13.2px;opacity:0;animation-timing-function:steps(1)}
+  23.3%{inset:0;opacity:.7;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  39.6%,100%{inset:-13.2px;opacity:0}
+}
+@keyframes holdPress{0%,50%{opacity:1}60%,92%{opacity:0}100%{opacity:1}}
 @media (hover:none){.hold-cue{display:none}}
 
 /* marquee */
@@ -311,10 +317,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
       <p>I make
         <span class="roles" id="roles"><span class="on">brand visuals</span><span>campaign videos</span><span>EDMs &amp; web banners</span><span>print &amp; packaging</span><span>event photography</span><span>AI avatar videos</span></span>
         that make people stop, look and remember.</p>
-      <div class="cues">
-        <a class="scroll-cue" href="#work"><b></b>Scroll to explore</a>
-        <span class="scroll-cue hold-cue"><b></b>Hold to reveal</span>
-      </div>
+      <span class="hold-cue"><span class="mouse"><i></i><i></i><b></b></span>Hold to reveal</span>
     </div>
   </section>
 
