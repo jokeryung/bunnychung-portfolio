@@ -52,7 +52,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav ul a:hover,.nav ul a.active{background:var(--ink);color:var(--bg)}
 
 /* hero */
-.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:110px var(--gutter) 60px;position:relative}
+.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:110px var(--gutter);position:relative}
 .eyebrow{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;gap:12px;margin-bottom:28px}
 .eyebrow::before{content:"";width:36px;height:1px;background:var(--ink-3)}
 .name{font-size:clamp(56px,14vw,210px);line-height:.88;font-weight:700;letter-spacing:-.055em;user-select:none}
@@ -97,7 +97,8 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .filters button.on{background:var(--ink);color:var(--bg)}
 
 /* grid */
-#work{overflow-x:clip}
+/* the hero centres the name in the screen, so no extra space here keeps the gaps above and below it equal */
+#work{overflow-x:clip;padding-top:0;scroll-margin-top:clamp(80px,12vw,150px)}
 .grid{position:relative;column-gap:var(--gap);min-height:200px}
 .grid .card{position:absolute;top:0;left:0}
 .card{perspective:900px;cursor:none;outline:none}
