@@ -4,7 +4,8 @@
     works/
         Design/                     <- category (folder name = filter name)
             Curry Campaign EDM/     <- one project; folder name = title
-                info.txt            <- optional: title, year, role, featured: yes ... + description
+                info.txt            <- optional: title, year, role, featured: yes, position: 9,
+                                       ratio: 0.5625 (card height / width) ... + description
                 cover.jpg           <- optional; otherwise the first image
                 01.jpg ...
         Photography/                <- images straight inside a category
@@ -149,7 +150,9 @@ def build_project(title, category, files, meta=None, desc="", key=None):
         "link": meta.get("link", ""),
         "order": float(meta.get("order", 0) or 0),
         "featured": meta.get("featured", "").lower() in {"yes", "true", "1"},
+        "position": int(meta.get("position", 0) or 0),
         "cover": "", "coverRatio": 0, **cover_info,
+        **({"coverRatio": float(meta["ratio"])} if meta.get("ratio") else {}),
         "description": desc,
         "media": media,
     }
@@ -290,6 +293,12 @@ def main():
 
     rank = {c.lower(): i for i, c in enumerate(CATEGORY_ORDER)}
     works.sort(key=lambda w: (-w["order"], rank.get(w["category"].lower(), 99)))
+    # "position: 9" in info.txt places a work 9th within its own category
+    for w in [w for w in works if w.get("position")]:
+        works.remove(w)
+        same = [i for i, x in enumerate(works) if x["category"] == w["category"]]
+        at = same[w["position"] - 1] if w["position"] <= len(same) else (same[-1] + 1 if same else len(works))
+        works.insert(at, w)
 
     CACHE.parent.mkdir(exist_ok=True)
     CACHE.write_text(json.dumps(cache, ensure_ascii=False, indent=2) + "\n")

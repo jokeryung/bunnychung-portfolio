@@ -106,7 +106,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .card{perspective:900px;cursor:none;outline:none}
 @media (hover:hover){.card{-webkit-user-select:none;user-select:none}}
 .card-in{position:relative;transform-style:preserve-3d;transition:transform .5s var(--ease)}
-.thumb{position:relative;border-radius:14px;overflow:hidden;background:var(--chip);transition:box-shadow .4s var(--ease)}
+.thumb{position:relative;width:100%;border-radius:14px;overflow:hidden;background:var(--chip);transition:box-shadow .4s var(--ease)}
 .card:hover .thumb,.card:focus-visible .thumb{box-shadow:0 18px 40px rgba(0,0,0,.14)}
 .card:focus-visible .thumb{outline:2px solid var(--ink);outline-offset:3px}
 .thumb img{width:100%;height:100%;object-fit:cover}
@@ -564,22 +564,60 @@ function layout() {
   colCount = gridW > 1180 ? 4 : gridW > 780 ? 3 : 2;
   const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
   const colW = (gridW - gap * (colCount - 1)) / colCount;
-  const heights = new Array(colCount).fill(0);
+  const heights = new Array(colCount).fill(0), stacks = Array.from({ length: colCount }, () => []);
   const list = shown();
   cards.forEach(c => { if (!list.includes(c)) c.remove(); });
-  list.forEach(c => {
-    const w = WORKS[c.dataset.i], span = w.featured ? Math.min(2, colCount) : 1;
-    // shortest spot first, like Pinterest; a featured card needs two columns side by side
+  const spanOf = c => WORKS[c.dataset.i].featured ? Math.min(2, colCount) : 1;
+  const cardH = c => colW * ratio(WORKS[c.dataset.i]);
+  const lowestSlot = span => {    // shortest spot first, like Pinterest; a featured card needs two columns side by side
     let col = 0, top = Infinity;
     for (let k = 0; k <= colCount - span; k++) {
       const t = Math.max(...heights.slice(k, k + span));
       if (t < top - 1) { top = t; col = k; }
     }
-    const width = colW * span + gap * (span - 1);
+    return { col, top };
+  };
+  const place = (c, col, top) => {
+    const span = spanOf(c), width = colW * span + gap * (span - 1), height = width * ratio(WORKS[c.dataset.i]);
     Object.assign(c.style, { left: col * (colW + gap) + "px", top: top + "px", width: width + "px" });
+    $(".thumb", c).style.height = "";
     if (!c.isConnected) grid.append(c);
-    for (let k = col; k < col + span; k++) heights[k] = top + width * ratio(w) + gap;
-  });
+    for (let k = col; k < col + span; k++) { heights[k] = top + height + gap; stacks[k] = span === 1 ? [...stacks[k], { c, height, top }] : []; }
+  };
+  const queue = list.slice();
+  while (queue.length) {
+    const c = queue[0], span = spanOf(c);
+    if (span === 1) { const { col, top } = lowestSlot(1); queue.shift(); place(c, col, top); continue; }
+    const { col, top } = lowestSlot(span);
+    // a featured card waits while the next small cards fill the hole it would leave above it
+    let hole = 0, holeCol = col;
+    for (let k = col; k < col + span; k++) if (top - heights[k] > hole) { hole = top - heights[k]; holeCol = k; }
+    let best = -1, bestMiss = Infinity;
+    if (hole > 12) queue.slice(1, 7).forEach((q, i) => {
+      if (spanOf(q) !== 1) return;
+      const need = cardH(q) + gap;
+      if (need <= hole * 1.2 && Math.abs(hole - need) < bestMiss) { bestMiss = Math.abs(hole - need); best = i + 1; }
+    });
+    if (best > 0) { const [q] = queue.splice(best, 1); place(q, holeCol, heights[holeCol]); continue; }
+    // whatever is left is shared out among the cards above: a long image just shows more of itself, others crop slightly
+    for (let k = col; k < col + span; k++) {
+      const miss = top - heights[k];
+      if (miss <= 0) continue;
+      const room = stacks[k].map(({ c: above, height }) => {
+        const w = WORKS[above.dataset.i];
+        return w.coverRatio > 1.5 ? colW * w.coverRatio - height : height * .12;
+      });
+      const share = Math.min(1, miss / Math.max(1, room.reduce((a, b) => a + b, 0)));
+      let pushed = 0;
+      stacks[k].forEach(({ c: above, height, top: was }, i) => {
+        above.style.top = was + pushed + "px";
+        $(".thumb", above).style.height = height + room[i] * share + "px";
+        pushed += room[i] * share;
+      });
+    }
+    queue.shift();
+    place(c, col, top);
+  }
   grid.style.height = Math.max(0, ...heights) - gap + "px";
 }
 layout();
