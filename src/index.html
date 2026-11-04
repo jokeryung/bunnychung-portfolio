@@ -510,9 +510,23 @@ addEventListener("scroll", () => {
   toTop.classList.toggle("show", scrollY > innerHeight * .8);
 }, { passive: true });
 toTop.onclick = () => scrollTo({ top: 0, behavior: calm ? "auto" : "smooth" });
+// after a click the highlight waits for the scroll to finish, so it doesn't flash through the sections in between
+let navSection = "", navLocked = false, navTimer = 0;
+const showNav = hash => $$(".nav ul a").forEach(a => a.classList.toggle("active", a.hash === hash));
 const spy = new IntersectionObserver(es => es.forEach(e => {
-  if (e.isIntersecting) $$(".nav ul a").forEach(a => a.classList.toggle("active", a.hash === "#" + e.target.id));
+  if (!e.isIntersecting) return;
+  navSection = "#" + e.target.id;
+  if (!navLocked) showNav(navSection);
 }), { rootMargin: "-45% 0px -50% 0px" });
+const waitForScrollEnd = () => {
+  clearTimeout(navTimer);
+  navTimer = setTimeout(() => { navLocked = false; if (navSection) showNav(navSection); }, 160);
+};
+addEventListener("scroll", () => { if (navLocked) waitForScrollEnd(); }, { passive: true });
+const lockNav = hash => { navLocked = true; if (hash) showNav(hash); waitForScrollEnd(); };
+$$(".nav ul a").forEach(a => a.addEventListener("click", () => lockNav(a.hash)));
+$(".logo").addEventListener("click", () => lockNav());
+$("#toTop").addEventListener("click", () => lockNav());
 ["work","about","contact"].forEach(id => spy.observe(document.getElementById(id)));
 
 /* ---------- works grid (masonry) + filters ---------- */
