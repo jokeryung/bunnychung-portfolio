@@ -150,9 +150,17 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .cursor::after{z-index:-1;background:var(--ink);transition:opacity .12s}
 .cursor::before,.cursor i{z-index:-2;border:1.5px solid var(--ink)}
 .cursor.big::after{opacity:1}
-.cursor.big::before{animation:holdRing 1.8s cubic-bezier(.2,.7,.3,1) infinite}
+/* on hover, the same quick rings as holding play for a moment every 3 seconds */
+.cursor.big::before,.cursor.big i{animation:holdBurst 3s linear infinite}
+.cursor.big i{animation-delay:.35s}
 .cursor.pressing::before,.cursor.pressing i{animation:holdRing .7s cubic-bezier(.2,.7,.3,1) infinite}
 .cursor.pressing i{animation-delay:-.35s}
+@keyframes holdBurst{
+  0%{transform:scale(1);opacity:.7;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  16.3%{transform:scale(1.3);opacity:0;animation-timing-function:steps(1)}
+  23.3%{transform:scale(1);opacity:.7;animation-timing-function:cubic-bezier(.2,.7,.3,1)}
+  39.6%,100%{transform:scale(1.3);opacity:0}
+}
 @keyframes holdRing{
   0%{transform:scale(1);opacity:.7}
   70%,100%{transform:scale(1.3);opacity:0}
