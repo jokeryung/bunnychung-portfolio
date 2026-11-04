@@ -111,6 +111,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .thumb.tall::after{content:"";position:absolute;inset:auto 0 0;height:30%;background:linear-gradient(transparent,rgba(244,244,242,.9));pointer-events:none}
 .thumb .hint{position:absolute;z-index:2;left:12px;bottom:12px;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);color:var(--ink);font-size:12px;font-weight:500;white-space:nowrap;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s var(--ease)}
 .card:hover .thumb .hint{opacity:1;transform:none}
+.thumb .hint.always{opacity:1;transform:none}
 @media (hover:none){.thumb .hint{opacity:1;transform:none}}
 .thumb .play{position:absolute;z-index:2;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);display:grid;place-items:center;transition:transform .4s var(--ease)}
 .thumb .play::before{content:"";margin-left:4px;border-left:15px solid var(--ink);border-block:9px solid transparent}
@@ -215,10 +216,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .gallery .embed{aspect-ratio:16/9}
 .gallery.cols{display:block;columns:2;column-gap:16px}
 .gallery.cols figure{break-inside:avoid;margin-bottom:16px}
-.gallery figure.tall{position:relative;max-height:min(78vh,900px)}
-.gallery figure.tall::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(255,255,255,.97) 85%);pointer-events:none}
-.gallery figure.tall figcaption{position:absolute;z-index:1;left:50%;bottom:26px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:12px 22px;border-radius:99px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500;white-space:nowrap;transition:transform .3s var(--ease)}
-.gallery figure.tall:hover figcaption{transform:translate(-50%,-4px)}
+.gallery figure.tall{cursor:default;width:100%;max-width:900px;margin-inline:auto}
 @media (max-width:600px){.gallery.cols{columns:1}}
 .gallery iframe{width:100%;height:100%;border:0}
 
@@ -524,7 +522,7 @@ const cards = WORKS.map((w, i) => {
         <div class="shine"></div>
         ${w.video ? `<span class="play"></span>` : ""}
         ${w.coverRatio > 1.6 ? `<span class="hint">Full length ↓</span>`
-          : w.media.length > 1 ? `<span class="hint">${w.media.length} images</span>` : ""}
+          : w.media.length > 1 ? `<span class="hint always">${w.media.length} images</span>` : ""}
       </div></div>`;
   return el;
 });
@@ -638,7 +636,7 @@ function openWork(i) {
     ${w.tags.length ? `<div class="tags">${w.tags.map(t => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
     ${w.link ? `<a class="ext" href="${esc(w.link)}" target="_blank" rel="noopener">View project ↗</a>` : ""}
     <div class="gallery${cols ? " cols" : ""}">${media.map(m =>
-      m.type === "image" ? `<figure data-k="${imgs.indexOf(m)}"${isTall(m) ? ` class="tall"` : ""}><img src="${esc(m.src)}" alt="${esc(w.title)}"${m.w ? ` width="${m.w}" height="${m.h}"` : ""} loading="lazy">${isTall(m) ? `<figcaption>View full image ↓</figcaption>` : ""}</figure>`
+      m.type === "image" ? `<figure data-k="${imgs.indexOf(m)}"${isTall(m) ? ` class="tall"` : ""}><img src="${esc(m.src)}" alt="${esc(w.title)}"${m.w ? ` width="${m.w}" height="${m.h}"` : ""} loading="lazy"></figure>`
       : m.type === "video" ? `<figure class="vid"><video src="${esc(m.src)}" controls playsinline preload="metadata"></video></figure>`
       : `<figure class="vid embed"><iframe src="${esc(embedUrl(m.src))}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy" title="${esc(w.title)} video"></iframe></figure>`
     ).join("")}</div>`;
@@ -649,9 +647,9 @@ function openWork(i) {
     document.body.style.overflow = "hidden";
     setTimeout(() => $(".close", modal).focus({ preventScroll: true }), 50);
   }
-  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { root: $(".sheet"), threshold: .1 });
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { root: $(".sheet") });
   $$(".gallery figure", mBody).forEach(f => io.observe(f));
-  $$(".gallery figure:not(.vid)", mBody).forEach(f => f.addEventListener("click", () => openLb(imgs, +f.dataset.k)));
+  $$(".gallery figure:not(.vid):not(.tall)", mBody).forEach(f => f.addEventListener("click", () => openLb(imgs, +f.dataset.k)));
 }
 function closeWork() {
   modal.classList.remove("open"); modal.setAttribute("aria-hidden", "true");
