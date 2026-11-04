@@ -106,7 +106,6 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .thumb .base{filter:grayscale(1) contrast(.9);opacity:.7}
 .thumb .color{position:absolute;inset:0;opacity:0}
 .thumb canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-@media (hover:none){.thumb .base{filter:none;opacity:1}.thumb .color{display:none}}
 .thumb.tall img{object-position:top center}
 .thumb.tall::after{content:"";position:absolute;inset:auto 0 0;height:30%;background:linear-gradient(transparent,rgba(244,244,242,.9));pointer-events:none}
 .thumb .hint{position:absolute;z-index:2;left:12px;bottom:12px;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);color:var(--ink);font-size:12px;font-weight:500;white-space:nowrap;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s var(--ease)}
@@ -567,7 +566,7 @@ if (cats.length > 1) {
   };
   const setTab = (cat, toTop) => {
     filter = cat;
-    colours.forEach(c => reveal(c, 0));
+    if (fine) colours.forEach(c => reveal(c, 0));
     layout(); renderTabs();
     if (toTop) $("#work").scrollIntoView({ behavior: "instant" });
     // same reveal as scrolling: cards start hidden and fade in as they enter the screen
@@ -597,7 +596,7 @@ if (fine) {
 /* ---------- silk colour reveal: a wide soft edge that folds like cloth, no fixed shape ---------- */
 const SILK_VS = `attribute vec2 a; varying vec2 uv; void main(){ uv = a * .5 + .5; gl_Position = vec4(a, 0., 1.); }`;
 const SILK_FS = `precision highp float;
-  uniform sampler2D tex; uniform float p, time, aspect; varying vec2 uv;
+  uniform sampler2D tex; uniform float p, time, aspect, flow; varying vec2 uv;
   float hash(vec2 v){ return fract(sin(dot(v, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 v){
     vec2 i = floor(v), f = fract(v); f = f * f * (3. - 2. * f);
@@ -609,7 +608,8 @@ const SILK_FS = `precision highp float;
     vec2 warp = vec2(folds(q + vec2(time * .10, 0.)), folds(q * 1.2 - vec2(0., time * .08)));
     float n = folds(q + warp * 1.4 + vec2(time * .05, -time * .04));
     float soft = .42, moving = sin(p * 3.14159);
-    float a = smoothstep(n - soft, n + soft, mix(.1 - soft, 1. + soft, p));
+    float edge = mix(n, 1. - uv.y, flow);
+    float a = smoothstep(edge - soft, edge + soft, mix(.1 - soft, 1. + soft, p));
     vec2 drift = vec2(cos(n * 6.2832), sin(n * 6.2832)) * .022 * moving;
     vec3 c = texture2D(tex, uv + drift).rgb;
     // grey matches .thumb .base exactly, so the whole picture moves as one cloth with no ghosting
@@ -637,9 +637,10 @@ function makeSilk() {
   gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  gl.uniform1f(gl.getUniformLocation(prog, "flow"), fine ? 0 : .65);
   return { canvas, gl, busy: false, uP: gl.getUniformLocation(prog, "p"), uTime: gl.getUniformLocation(prog, "time"), uAspect: gl.getUniformLocation(prog, "aspect") };
 }
-const colours = [], silks = [], moving = new Set();
+const colours = [], silks = [], moving = new Set(), silkQueue = [];
 let silkRaf = 0, silkLast = 0;
 const freeSilk = () => {
   let s = silks.find(x => !x.busy);
@@ -671,7 +672,7 @@ function silkTick(now) {
   const dt = Math.min(now - silkLast, 50);
   silkLast = now;
   moving.forEach(c => {
-    const step = dt / (c.target ? 1300 : 1000);
+    const step = dt / (c.target ? (fine ? 1300 : 2600) : 1000);
     c.p = c.target > c.p ? Math.min(c.p + step, 1) : Math.max(c.p - step, 0);
     if (c.p === c.target) {      // settled: the plain image takes over, pin-sharp
       c.img.style.opacity = c.p;
@@ -679,6 +680,8 @@ function silkTick(now) {
       c.silk.busy = false;
       c.silk = null;
       moving.delete(c);
+      const next = silkQueue.shift();
+      if (next) reveal(next, 1);
     } else drawSilk(c, now);
   });
   silkRaf = moving.size ? requestAnimationFrame(silkTick) : 0;
@@ -687,6 +690,10 @@ function reveal(c, to) {
   c.target = to;
   if (c.silk || c.p === to) return;
   const s = calm ? null : freeSilk();
+  if (!s && !calm && !fine && silks.length && silkQueue.length < 3) {   // touch: wait a turn, top to bottom
+    silkQueue.push(c);
+    return;
+  }
   c.img.style.transition = "";
   if (!s || !loadSilk(s, c)) {   // no WebGL or image still loading: plain fade
     c.img.style.transition = "opacity .7s ease";
@@ -717,6 +724,16 @@ cards.forEach(card => {
   card.addEventListener("click", () => openCard(+card.dataset.i));
   card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCard(+card.dataset.i); } });
 });
+
+if (!fine) {
+  const colourOnScroll = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    colourOnScroll.unobserve(e.target);
+    const c = colours[cards.indexOf(e.target)], go = () => reveal(c, 1);
+    if (c.img.complete) go(); else c.img.addEventListener("load", go, { once: true });
+  }), { rootMargin: "0px 0px -20% 0px" });
+  cards.forEach(c => colourOnScroll.observe(c));
+}
 
 /* ---------- project sheet ---------- */
 const modal = $("#modal"), mBody = $("#mBody");
