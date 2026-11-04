@@ -39,10 +39,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;justify-content:space-between;align-items:center;
   padding:14px var(--gutter);transition:background .3s,backdrop-filter .3s,border-color .3s;border-bottom:1px solid transparent}
 .nav.scrolled{background:rgba(244,244,242,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:var(--line)}
-.logo{font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.logo{font-weight:700;letter-spacing:-.02em;display:flex;align-items:baseline;gap:10px;white-space:nowrap}
 .logo em{font-family:var(--serif);font-style:italic;font-weight:400;font-size:1.18em;letter-spacing:-.01em;margin-left:-4px}
-.logo i{width:9px;height:9px;border-radius:50%;background:var(--ink);display:inline-block;animation:pulse 2.4s infinite}
-@keyframes pulse{50%{transform:scale(.55);opacity:.5}}
+/* letter roll: a hidden copy of the final letter holds the width, the column rolls inside a clip */
+.slot{display:inline-block;position:relative;line-height:1.3}
+.slot .sizer{visibility:hidden}
+.slot .clip{position:absolute;top:0;left:-.3em;right:-.3em;height:1.3em;overflow:hidden}
+.slot .column{display:block;text-align:center;transform:translateY(calc(var(--k,0) * -1.3em));transition:transform .45s var(--ease)}
+.slot .column span{display:block;height:1.3em}
 .nav ul{list-style:none;display:flex;gap:4px}
 .nav ul a{display:block;padding:7px 14px;border-radius:99px;font-size:14px;color:var(--ink-2);transition:background .25s,color .25s}
 .nav ul a:hover,.nav ul a.active{background:var(--ink);color:var(--bg)}
@@ -111,13 +115,21 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .thumb .play{position:absolute;z-index:2;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);display:grid;place-items:center;transition:transform .4s var(--ease)}
 .thumb .play::before{content:"";margin-left:4px;border-left:15px solid var(--ink);border-block:9px solid transparent}
 .card:hover .thumb .play{transform:scale(1.15)}
+.more{margin-top:clamp(48px,7vw,88px);padding-top:28px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:20px 32px;flex-wrap:wrap}
+.more[hidden]{display:none}
+.more p{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2)}
+.more-btns{display:flex;flex-wrap:wrap;gap:8px}
+.more-btns button{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:99px;background:var(--chip);font-size:14px;color:var(--ink-2);transition:background .25s,color .25s,transform .2s}
+.more-btns button:hover{background:var(--ink);color:var(--bg);transform:translateY(-2px)}
+.more-btns svg{width:14px;height:14px;transition:transform .35s var(--ease)}
+.more-btns button:hover svg{transform:translateX(3px)}
 .empty{flex:1;padding:80px 20px;text-align:center;color:var(--ink-3);border:1.5px dashed var(--line);border-radius:var(--radius)}
 
 /* custom cursor */
-.cursor{position:fixed;top:0;left:0;z-index:100;pointer-events:none;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--ink);
+.cursor{position:fixed;top:0;left:0;z-index:100;pointer-events:none;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;mix-blend-mode:difference;
   display:grid;place-items:center;color:var(--bg);font-size:13px;font-weight:600;transition:width .35s var(--ease),height .35s var(--ease),margin .35s var(--ease),opacity .3s;opacity:0}
 .cursor.show{opacity:1}
-.cursor.big{width:88px;height:88px;margin:-44px 0 0 -44px}
+.cursor.big{width:88px;height:88px;margin:-44px 0 0 -44px;background:var(--ink);mix-blend-mode:normal}
 .cursor span{opacity:0;transition:opacity .2s}
 .cursor.big span{opacity:1}
 @media (hover:none){.cursor{display:none}.card{cursor:pointer}}
@@ -165,6 +177,13 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:clamp(60px,9vw,120px);padding-top:24px;border-top:1px solid #2c2c2c;color:#8a8a8a;font-size:13px}
 .toast{position:fixed;left:50%;bottom:28px;z-index:300;transform:translate(-50%,30px);opacity:0;padding:12px 20px;border-radius:99px;background:var(--ink);color:var(--bg);font-size:14px;transition:all .4s var(--ease);pointer-events:none}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* back to top */
+.totop{position:fixed;right:clamp(16px,3vw,32px);bottom:clamp(16px,3vw,32px);z-index:40;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.1);opacity:0;visibility:hidden;transform:translateY(16px);transition:opacity .35s,visibility .35s,transform .35s var(--ease),background .25s,color .25s}
+.totop.show{opacity:1;visibility:visible;transform:none}
+@media (hover:hover){.totop:hover{background:var(--ink);color:var(--bg)}.totop:hover svg{animation:arrowUp .9s var(--ease) infinite}}
+.totop:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+@keyframes arrowUp{0%{transform:none;opacity:1}45%{transform:translateY(-34px);opacity:0}46%{transform:translateY(34px);opacity:0}100%{transform:none;opacity:1}}
 
 /* project modal */
 .modal{position:fixed;inset:0;z-index:200;display:flex;justify-content:flex-end;visibility:hidden}
@@ -241,7 +260,7 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 <div class="cursor" aria-hidden="true"><span>View</span></div>
 
 <header class="nav" id="nav">
-  <a href="#top" class="logo"><i></i>Bunny <em>Chung</em></a>
+  <a href="#top" class="logo" id="logo" aria-label="Bunny Chung"><span>Bunny</span><em>Chung</em></a>
   <ul>
     <li><a href="#work">Work</a></li>
     <li><a href="#about">About</a></li>
@@ -272,6 +291,10 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
       <div class="filters" id="filters" role="tablist" aria-label="Filter by category"></div>
     </div>
     <div class="grid" id="grid"></div>
+    <nav class="more rv" id="more" aria-label="See other categories">
+      <p>Keep exploring</p>
+      <div class="more-btns" id="moreBtns"></div>
+    </nav>
   </section>
 
   <section class="block" id="about">
@@ -310,6 +333,8 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
   </div>
   <div class="foot"><span>© <span id="yr"></span> Bunny Chung</span><span>bunnychung.com</span></div>
 </footer>
+
+<button class="totop" id="toTop" aria-label="Back to top"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20V5M6 11l6-6 6 6"/></svg></button>
 
 <div class="modal" id="modal" aria-hidden="true">
   <div class="scrim" data-close></div>
@@ -373,17 +398,17 @@ const chars = $$("#name .ch");
 const nameEl = $("#name");
 let fitW = 0;
 function fitName() {
-  fitW = innerWidth;
+  fitW = document.documentElement.clientWidth;
   chars.forEach(c => c.classList.remove("swap"));
   nameEl.style.fontSize = "";
-  if (innerWidth > 700) return;
+  if (fitW > 700) return;
   const widest = Math.max(...$$(".row", nameEl).map(r => r.offsetWidth));
   const size = parseFloat(getComputedStyle(nameEl).fontSize);
   nameEl.style.fontSize = size * nameEl.clientWidth / widest * .98 + "px";
 }
 fitName();
 document.fonts && document.fonts.ready.then(fitName);
-addEventListener("resize", () => { if (innerWidth !== fitW) fitName(); });   // phone toolbars fire resize on scroll
+new ResizeObserver(() => { if (document.documentElement.clientWidth !== fitW) fitName(); }).observe(nameEl);   // width only: phone toolbars resize the page on scroll
 // phones have no hover: a wave of typeface swaps runs through the name as the page scrolls
 const isPhone = () => !fine && Math.min(innerWidth, innerHeight) <= 600;
 if (!calm) {
@@ -439,13 +464,47 @@ if (fine && !calm) {
   tick();
 }
 
+/* ---------- header name: starts blank, one letter rolls up each second until the name is spelled ---------- */
+const STEP_MS = 1000;
+const slots = $$("#logo > *").flatMap(word => {
+  const letters = [...word.textContent];
+  word.textContent = "";
+  word.setAttribute("aria-hidden", "true");
+  return letters.map(ch => {
+    const first = ch === ch.toUpperCase() ? 65 : 97;   // keep the letter's case: A-B, a-u
+    const steps = ch.charCodeAt(0) - first + 1;        // blank to A counts as the first step
+    const column = Array.from({ length: steps }, (_, i) => `<span>${String.fromCharCode(first + i)}</span>`).join("");
+    const slot = document.createElement("span");
+    slot.className = "slot";
+    slot.innerHTML = `<span class="sizer">${ch}</span><span class="clip"><span class="column"><span></span>${column}</span></span>`;
+    word.append(slot);
+    const col = $(".column", slot);
+    if (calm) col.style.setProperty("--k", steps);
+    return { col, steps };
+  });
+});
+if (!calm) (async () => {
+  await (document.fonts ? document.fonts.ready : Promise.resolve());
+  for (const { col, steps } of slots) {
+    for (let k = 1; k <= steps; k++) {
+      col.style.setProperty("--k", k);
+      await new Promise(r => setTimeout(r, STEP_MS));
+    }
+  }
+})();
+
 /* ---------- marquee ---------- */
 const words = ["Graphic Design","Video Production","Photography","AI Avatar","Branding","E-commerce","Motion","Editing"];
 $("#marq").innerHTML = [...words, ...words].map(w => `<span>${w}</span>`).join("");
 
 /* ---------- nav ---------- */
 const nav = $("#nav");
-addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 20), { passive: true });
+const toTop = $("#toTop");
+addEventListener("scroll", () => {
+  nav.classList.toggle("scrolled", scrollY > 20);
+  toTop.classList.toggle("show", scrollY > innerHeight * .8);
+}, { passive: true });
+toTop.onclick = () => scrollTo({ top: 0, behavior: calm ? "auto" : "smooth" });
 const spy = new IntersectionObserver(es => es.forEach(e => {
   if (e.isIntersecting) $$(".nav ul a").forEach(a => a.classList.toggle("active", a.hash === "#" + e.target.id));
 }), { rootMargin: "-45% 0px -50% 0px" });
@@ -469,7 +528,8 @@ const cards = WORKS.map((w, i) => {
       </div></div>`;
   return el;
 });
-let filter = "All", colCount = 0;
+const DEFAULT_TAB = "Design";
+let filter = WORKS.some(w => w.category === DEFAULT_TAB) ? DEFAULT_TAB : "All", colCount = 0;
 const shown = () => cards.filter(c => filter === "All" || WORKS[c.dataset.i].category === filter);
 function layout() {
   if (!WORKS.length) { grid.innerHTML = `<div class="empty">Work coming soon.</div>`; return; }
@@ -501,16 +561,27 @@ new ResizeObserver(() => { if (grid.clientWidth !== lastW) { lastW = grid.client
 
 const cats = [...new Set(WORKS.map(w => w.category))];
 if (cats.length > 1) {
-  $("#filters").innerHTML = ["All", ...cats].map((c, i) =>
-    `<button role="tab" class="${i ? "" : "on"}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
-  $("#filters").addEventListener("click", e => {
-    const b = e.target.closest("button"); if (!b) return;
-    $$("#filters button").forEach(x => x.classList.toggle("on", x === b));
-    filter = b.dataset.cat;
-    const run = () => { layout(); cards.forEach(c => c.classList.add("in")); };
-    document.startViewTransition && !calm ? document.startViewTransition(run) : run();
-  });
-}
+  const tabs = [...cats, "All"];
+  $("#filters").innerHTML = tabs.map(c => `<button role="tab" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+  const renderTabs = () => {
+    $$("#filters button").forEach(x => x.classList.toggle("on", x.dataset.cat === filter));
+    $("#moreBtns").innerHTML = tabs.filter(c => c !== filter).map(c =>
+      `<button data-cat="${esc(c)}">${esc(c)}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>`).join("");
+  };
+  const setTab = (cat, toTop) => {
+    filter = cat;
+    const run = () => {
+      layout(); renderTabs();
+      cards.forEach(c => c.classList.add("in"));
+      if (toTop) $("#work").scrollIntoView({ behavior: "instant" });
+    };
+    if (document.startViewTransition && !calm) document.startViewTransition(run).ready.catch(() => {});   // skipped when hidden or resized; run() still applies
+    else run();
+  };
+  renderTabs();
+  $("#filters").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTab(b.dataset.cat, false); });
+  $("#moreBtns").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTab(b.dataset.cat, true); });
+} else $("#more").hidden = true;
 
 const cursor = $(".cursor");
 let cx = 0, cy = 0;
