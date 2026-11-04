@@ -84,15 +84,6 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 @keyframes holdPress{0%,50%{opacity:1}60%,92%{opacity:0}100%{opacity:1}}
 @media (hover:none){.hold-cue{display:none}}
 
-/* marquee */
-.marquee{border-block:1px solid var(--line);overflow:hidden;background:var(--surface)}
-.marquee div{display:flex;gap:48px;width:max-content;padding:18px 0;animation:marq 32s linear infinite;font-size:clamp(20px,3vw,34px);font-weight:600;letter-spacing:-.02em}
-.marquee span{display:flex;align-items:center;gap:48px;color:var(--ink-3)}
-.marquee span:nth-child(odd){color:var(--ink)}
-.marquee span::after{content:"✦";font-size:.6em;color:var(--ink-3)}
-.marquee:hover div{animation-play-state:paused}
-@keyframes marq{to{transform:translateX(-50%)}}
-
 /* sections */
 section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:44px}
@@ -321,8 +312,6 @@ section.block{padding:clamp(80px,12vw,150px) var(--gutter)}
     </div>
   </section>
 
-  <div class="marquee" aria-hidden="true"><div id="marq"></div></div>
-
   <section class="block" id="work">
     <div class="sec-head rv">
       <h2>Selected <em>work</em></h2>
@@ -529,10 +518,6 @@ if (!calm) (async () => {
     }
   }
 })();
-
-/* ---------- marquee ---------- */
-const words = ["Graphic Design","Video Production","Photography","AI Avatar","Branding","E-commerce","Motion","Editing"];
-$("#marq").innerHTML = [...words, ...words].map(w => `<span>${w}</span>`).join("");
 
 /* ---------- nav ---------- */
 const nav = $("#nav");
