@@ -1,0 +1,20 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glass reel demo</title>
+<!-- Open through a local server from the repo root, e.g. python3 -m http.server, then /effects/glass-reel/demo.html -->
+<style>
+  body{margin:0;background:#f4f4f2;font-family:system-ui,sans-serif;color:#555}
+  p{text-align:center;font-size:13px}
+</style>
+<div style="height:20vh"></div>
+<div id="reel"></div>
+<p id="said">Drag to explore · click a photo</p>
+<script src="glass-reel.js"></script>
+<script>
+  const photos = ["bs202411", "bs204894", "dsc00028", "dsc00430", "dsc00540", "dsc00692"]
+    .map(n => ({ src: `../../docs/media/photography-${n}/thumb-${n}.jpg`, ratio: .667 }));
+  glassReel(document.getElementById("reel"), photos, {
+    onOpen: i => document.getElementById("said").textContent = "Clicked photo " + (i + 1),
+  });
+</script>
